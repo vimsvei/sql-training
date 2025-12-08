@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17
+    container_name: postgres_air_db
+    environment:
+      POSTGRES_DB: postgres_air
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres_air || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: postgres_air_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
+  loader:
+    build: ./loader
+    container_name: postgres_air_loader
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres_air
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+      # URL на zip с plain-SQL дампом postgres_air_2024.sql
+      # Исходная ссылка от авторов:
+      # https://drive.google.com/file/d/1C7PVxeYvLDr6n_7qjdA2k0vahv__jMEo/view?usp=drive_link
+      # Для curl удобнее использовать прямой download-URL:
+      POSTGRES_AIR_DUMP_URL: "https://drive.google.com/uc?export=download&id=1C7PVxeYvLDr6n_7qjdA2k0vahv__jMEo"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
