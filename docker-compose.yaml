@@ -5,21 +5,18 @@ services:
     image: traefik:v3.6.2
     container_name: postgres_air_traefik
     command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
+      - --ping=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.traefik.address=:8080
     ports:
-      # Используем порты 8000/8081 чтобы не конфликтовать с archpad traefik
-      - "0.0.0.0:8000:80"
-      - "0.0.0.0:8081:8080"  # Traefik dashboard
+      - "0.0.0.0:80:80"
+      - "8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - training-network
-      # Если нужно использовать общий traefik с archpad, раскомментируйте:
-      # - external: true
-      #   name: archpad_appnet
 
   db:
     image: postgres:17
@@ -28,9 +25,6 @@ services:
       POSTGRES_DB: postgres_air
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      # Используем порт 5433 чтобы не конфликтовать с archpad postgres (5432)
-      - "0.0.0.0:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -46,31 +40,18 @@ services:
     image: dpage/pgadmin4:9.10
     container_name: postgres_air_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@example.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      # Отключаем требование мастер-пароля (пароль для защиты сохраненных паролей БД)
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
-      # Режим сервера (True = server mode для веб-доступа)
-      PGADMIN_CONFIG_SERVER_MODE: "True"
+      PGADMIN_DEFAULT_EMAIL: "admin@example.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 25
+      PGADMIN_CONFIG_ALLOW_SAVE_PASSWORD: "True"
     volumes:
-      # Подключаем файл с предустановленными серверами
-      # ВАЖНО: файл загружается только при ПЕРВОМ запуске (когда создается база данных)
-      # Если сервер не появился после первого запуска, выполните:
-      # docker-compose down pgadmin
-      # docker volume rm $(docker volume ls -q | grep pgadmin) 2>/dev/null || true
-      # docker-compose up -d pgadmin
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
-      # Также монтируем в директорию storage для гарантии загрузки
-      - pgadmin_storage:/var/lib/pgadmin/storage
     labels:
-      - "traefik.enable=true"
-      # Уникальное имя роутера чтобы не конфликтовать с archpad pgadmin
-      # Работает по: http://localhost:8000, http://pgadmin-sql.local:8000, http://pgadmin-sql.localhost:8000
-      # Для использования доменов добавьте в /etc/hosts: 127.0.0.1 pgadmin-sql.local pgadmin-sql.localhost
-      - "traefik.http.routers.pgadmin-sql-training.rule=Host(`pgadmin-sql.local`) || Host(`pgadmin-sql.localhost`) || Host(`localhost`)"
-      - "traefik.http.routers.pgadmin-sql-training.entrypoints=web"
-      - "traefik.http.routers.pgadmin-sql-training.priority=10"
-      - "traefik.http.services.pgadmin-sql-training.loadbalancer.server.port=80"
+      - traefik.enable=true
+      - traefik.http.routers.pgadmin-sql-training.rule=Host(`sql.localhost`)
+      - traefik.http.routers.pgadmin.entrypoints=web
+      - traefik.http.services.pgadmin.loadbalancer.server.port=80
     depends_on:
       - db
     networks:
@@ -85,11 +66,6 @@ services:
       POSTGRES_DB: postgres_air
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-
-      # URL на zip с plain-SQL дампом postgres_air_2024.sql
-      # Исходная ссылка от авторов:
-      # https://drive.google.com/file/d/1C7PVxeYvLDr6n_7qjdA2k0vahv__jMEo/view?usp=drive_link
-      # Для curl удобнее использовать прямой download-URL:
       POSTGRES_AIR_DUMP_URL: "https://drive.google.com/uc?export=download&id=1C7PVxeYvLDr6n_7qjdA2k0vahv__jMEo"
     depends_on:
       db:
@@ -100,11 +76,8 @@ services:
 
 volumes:
   postgres_data:
-  pgadmin_storage:
 
 networks:
   training-network:
     driver: bridge
-    # Если нужно использовать общую сеть с archpad, раскомментируйте:
-    # external: true
-    # name: archpad_appnet
+
