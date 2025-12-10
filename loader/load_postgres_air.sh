@@ -25,7 +25,10 @@ if psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRE
 fi
 
 echo "Downloading postgres_air dump from ${POSTGRES_AIR_DUMP_URL} ..."
-curl -L "$POSTGRES_AIR_DUMP_URL" -o /tmp/postgres_air_2024.sql.zip
+# Извлекаем ID файла из URL
+FILE_ID=$(echo "$POSTGRES_AIR_DUMP_URL" | sed -n 's/.*id=\([^&]*\).*/\1/p')
+# Используем gdown для надежного скачивания с Google Drive
+gdown "https://drive.google.com/uc?id=${FILE_ID}" -O /tmp/postgres_air_2024.sql.zip
 
 echo "Unzipping dump..."
 # -p выводит содержимое архива в stdout — не важно, как называется файл внутри
