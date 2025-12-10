@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Postgres Air",
+      "Group": "Servers",
+      "Host": "db",
+      "Port": 5432,
+      "MaintenanceDB": "postgres_air",
+      "Username": "postgres",
+      "Password": "postgres",
+      "SSLMode": "prefer",
+      "Comment": "PostgreSQL Air Training Database"
+    }
+  }
+}
